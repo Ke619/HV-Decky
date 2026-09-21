@@ -1,0 +1,16 @@
+{
+  "name": "HV-Decky",
+  "author": "Pareidolia?",
+  "flags": [
+    "root"
+  ],
+  "api_version": 1,
+  "publish": {
+    "tags": [
+      "system",
+      "kernel",
+      "root"
+    ],
+    "description": "Build, load, and unload cpuid_fault_emulation"
+  }
+}
