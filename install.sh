@@ -40,6 +40,12 @@ fi
 # --- Install -----------------------------------------------------------------
 mkdir -p "$PLUGINS_DIR"
 
+# Make sure we own the plugins dir (previous sudo installs may have root-owned it)
+if [ "$(stat -c '%U' "$PLUGINS_DIR")" != "$(id -un)" ]; then
+    echo "==> $PLUGINS_DIR is not owned by you; fixing with sudo"
+    sudo chown -R "$(id -u):$(id -g)" "$HOME/homebrew"
+fi
+
 # Handle leftovers from a previous sudo-based install
 if [ -e "$DEST" ]; then
     if ! rm -rf "$DEST" 2>/dev/null; then
@@ -50,7 +56,7 @@ fi
 
 mv "$SRC" "$DEST"
 
-# Make sure nothing inside is root-owned
+# Belt-and-suspenders: make sure nothing inside is root-owned
 if [ "$(stat -c '%U' "$DEST")" != "$(id -un)" ]; then
     echo "==> Fixing ownership of $DEST"
     sudo chown -R "$(id -u):$(id -g)" "$DEST"
