@@ -64,19 +64,11 @@ fi
 
 echo "==> Installed to $DEST"
 
-# --- Optional: cpuid_fault_emulation.zip -------------------------------------
+# --- cpuid_fault_emulation.zip (always downloaded, no prompt) ----------------
 echo
-read -r -p "Download cpuid_fault_emulation.zip? [y/N] " answer
-case "$answer" in
-    [yY]*)
-        echo "==> Downloading cpuid_fault_emulation.zip..."
-        curl -fL "https://github.com/Ke619/HV-Decky/raw/refs/heads/main/cpuid_fault_emulation.zip" \
-            -o "$HOME/cpuid_fault_emulation.zip"
-        echo "==> Downloaded to home directory"
-        ;;
-    *)
-        echo "Skipping cpuid_fault_emulation.zip download."
-        ;;
-esac
+echo "==> Downloading cpuid_fault_emulation.zip..."
+curl -fL "https://github.com/Ke619/HV-Decky/raw/refs/heads/main/cpuid_fault_emulation.zip" \
+    -o "$HOME/cpuid_fault_emulation.zip"
+echo "==> Downloaded to $HOME/cpuid_fault_emulation.zip"
 
 echo "==> Done."
