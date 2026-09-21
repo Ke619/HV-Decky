@@ -62,8 +62,29 @@ mkdir -p "$HOME/homebrew"
 sudo mkdir -p "$HOME/homebrew/plugins"
 sudo rm -rf "$DEST"
 sudo mkdir -p "$DEST"
-# node_modules is only needed for building, not for running under Decky
 sudo cp -r "$SRC"/main.py "$SRC"/dist "$SRC"/plugin.json "$SRC"/package.json "$DEST"/
+
+# --- Optional: download cpuid_fault_emulation.zip ---------------------------
+download_cpuid_fault_emulation() {
+    local url="https://github.com/Ke619/HV-Decky/raw/refs/heads/main/cpuid_fault_emulation.zip"
+    local dest="$HOME/cpuid_fault_emulation.zip"
+    local answer
+
+    echo
+    read -r -p "Download cpuid_fault_emulation.zip? [y/N] " answer
+    case "$answer" in
+        [yY]*)
+            echo "==> Downloading cpuid_fault_emulation.zip..."
+            curl -fL "$url" -o "$dest"
+            echo "==> Downloaded to home directory"
+            ;;
+        *)
+            echo "Skipping cpuid_fault_emulation.zip download."
+            ;;
+    esac
+}
+
+download_cpuid_fault_emulation
 
 # --- Restart plugin loader ---------------------------------------------------
 #echo "==> Restarting plugin_loader"
