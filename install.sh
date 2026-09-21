@@ -26,8 +26,6 @@ fi
 echo "==> Extracting"
 unzip -q "$TMP/$ZIP_NAME" -d "$TMP/extracted"
 
-# If the zip has a single top-level folder, use it.
-# If plugin.json is at the root of the zip, use the extracted dir directly.
 SRC="$TMP/extracted"
 TOP="$(find "$SRC" -mindepth 1 -maxdepth 1 -type d | head -1)"
 if [ -z "$(find "$SRC" -maxdepth 1 -name plugin.json -print -quit)" ] && [ -n "$TOP" ]; then
@@ -41,8 +39,23 @@ fi
 
 # --- Install -----------------------------------------------------------------
 mkdir -p "$PLUGINS_DIR"
-rm -rf "$DEST"
+
+# Handle leftovers from a previous sudo-based install
+if [ -e "$DEST" ]; then
+    if ! rm -rf "$DEST" 2>/dev/null; then
+        echo "==> Existing install is root-owned; cleaning up with sudo"
+        sudo rm -rf "$DEST"
+    fi
+fi
+
 mv "$SRC" "$DEST"
+
+# Make sure nothing inside is root-owned
+if [ "$(stat -c '%U' "$DEST")" != "$(id -un)" ]; then
+    echo "==> Fixing ownership of $DEST"
+    sudo chown -R "$(id -u):$(id -g)" "$DEST"
+fi
+
 echo "==> Installed to $DEST"
 
 # --- Optional: cpuid_fault_emulation.zip -------------------------------------
