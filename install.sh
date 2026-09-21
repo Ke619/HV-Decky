@@ -2,92 +2,62 @@
 set -euo pipefail
 
 PLUGIN_NAME="HV-Decky"
-DEST="$HOME/homebrew/plugins/$PLUGIN_NAME"
-REPO_URL="${REPO_URL:-https://github.com/Ke619/HV-Decky}"
-BRANCH="${BRANCH:-main}"
+PLUGINS_DIR="$HOME/homebrew/plugins"
+DEST="$PLUGINS_DIR/$PLUGIN_NAME"
+ZIP_NAME="HV-Decky_20260801193851.zip"
+ZIP_URL="https://github.com/Ke619/HV-Decky/raw/refs/heads/main/$ZIP_NAME"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 echo "==> $PLUGIN_NAME installer"
-echo "    Source: $REPO_URL ($BRANCH)"
+echo "    Source: $ZIP_URL"
 echo "    Target: $DEST"
 
-# --- Decky Loader check -----------------------------------------------------
-decky_found=0
-if [ -d "$HOME/homebrew/plugins" ] || systemctl list-unit-files 2>/dev/null | grep -q '^plugin_loader'; then
-    decky_found=1
-fi
+# --- Download the plugin zip -------------------------------------------------
+echo "==> Downloading $ZIP_NAME"
+curl -fL "$ZIP_URL" -o "$TMP/$ZIP_NAME"
 
-if [ "$decky_found" -eq 0 ]; then
-    echo "Decky Loader was not detected on this system."
-    read -r -p "Install Decky Loader now? [y/N] " answer
-    case "$answer" in
-        [yY]*)
-            echo "==> Installing Decky Loader..."
-            curl -L https://github.com/SteamDeckHomebrew/decky-installer/releases/latest/download/install_release.sh | sh
-            ;;
-        *)
-            echo "Aborting: Decky Loader is required for $PLUGIN_NAME."
-            exit 1
-            ;;
-    esac
-fi
-
-# --- Download plugin --------------------------------------------------------
-echo "==> Downloading $PLUGIN_NAME"
-curl -L "$REPO_URL/archive/refs/heads/$BRANCH.tar.gz" -o "$TMP/plugin.tar.gz"
-if ! tar -tzf "$TMP/plugin.tar.gz" >/dev/null 2>&1; then
-    echo "Error: downloaded file is not a valid tarball."
-    echo "Is the repository public? Private repos require authentication."
+if ! command -v unzip >/dev/null 2>&1; then
+    echo "Error: unzip is required but not installed."
     exit 1
 fi
 
-tar -xzf "$TMP/plugin.tar.gz" -C "$TMP"
-SRC="$(find "$TMP" -mindepth 1 -maxdepth 1 -type d | head -1)"
+# --- Extract -----------------------------------------------------------------
+echo "==> Extracting"
+unzip -q "$TMP/$ZIP_NAME" -d "$TMP/extracted"
 
-# --- Build frontend if dist/ is not shipped ----------------------------------
-if [ ! -d "$SRC/dist" ]; then
-    echo "==> Building frontend (dist/ not present in source)"
-    if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
-        echo "Error: node and npm are required to build the plugin frontend."
-        echo "Install Node.js on this machine, or ship a release with a prebuilt dist/."
-        exit 1
-    fi
-    (cd "$SRC" && npm ci && npm run build)
+# If the zip has a single top-level folder, use it.
+# If plugin.json is at the root of the zip, use the extracted dir directly.
+SRC="$TMP/extracted"
+TOP="$(find "$SRC" -mindepth 1 -maxdepth 1 -type d | head -1)"
+if [ -z "$(find "$SRC" -maxdepth 1 -name plugin.json -print -quit)" ] && [ -n "$TOP" ]; then
+    SRC="$TOP"
 fi
 
-# --- Install plugin ----------------------------------------------------------
-echo "==> Copying plugin to $DEST"
-mkdir -p "$HOME/homebrew"
-sudo mkdir -p "$HOME/homebrew/plugins"
-sudo rm -rf "$DEST"
-sudo mkdir -p "$DEST"
-sudo cp -r "$SRC"/main.py "$SRC"/dist "$SRC"/plugin.json "$SRC"/package.json "$DEST"/
+if [ ! -f "$SRC/plugin.json" ]; then
+    echo "Error: plugin.json not found in extracted contents — wrong zip layout?"
+    exit 1
+fi
 
-# --- Optional: download cpuid_fault_emulation.zip ---------------------------
-download_cpuid_fault_emulation() {
-    local url="https://github.com/Ke619/HV-Decky/raw/refs/heads/main/cpuid_fault_emulation.zip"
-    local dest="$HOME/cpuid_fault_emulation.zip"
-    local answer
+# --- Install -----------------------------------------------------------------
+mkdir -p "$PLUGINS_DIR"
+rm -rf "$DEST"
+mv "$SRC" "$DEST"
+echo "==> Installed to $DEST"
 
-    echo
-    read -r -p "Download cpuid_fault_emulation.zip? [y/N] " answer
-    case "$answer" in
-        [yY]*)
-            echo "==> Downloading cpuid_fault_emulation.zip..."
-            curl -fL "$url" -o "$dest"
-            echo "==> Downloaded to home directory"
-            ;;
-        *)
-            echo "Skipping cpuid_fault_emulation.zip download."
-            ;;
-    esac
-}
+# --- Optional: cpuid_fault_emulation.zip -------------------------------------
+echo
+read -r -p "Download cpuid_fault_emulation.zip? [y/N] " answer
+case "$answer" in
+    [yY]*)
+        echo "==> Downloading cpuid_fault_emulation.zip..."
+        curl -fL "https://github.com/Ke619/HV-Decky/raw/refs/heads/main/cpuid_fault_emulation.zip" \
+            -o "$HOME/cpuid_fault_emulation.zip"
+        echo "==> Downloaded to home directory"
+        ;;
+    *)
+        echo "Skipping cpuid_fault_emulation.zip download."
+        ;;
+esac
 
-download_cpuid_fault_emulation
-
-# --- Restart plugin loader ---------------------------------------------------
-#echo "==> Restarting plugin_loader"
-#sudo systemctl restart plugin_loader
-
-echo "==> Done. $PLUGIN_NAME installed at $DEST"
+echo "==> Done."
